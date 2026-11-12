@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  STUDENT
+  INSTITUTION
+  ORGANIZATION
+  REVIEWER
+  ADMIN
+}
+
+enum ComplaintStatus {
+  PENDING
+  UNDER_REVIEW
+  MORE_INFO_REQUESTED
+  VERIFIED
+  ESCALATED
+  CLOSED
+}
+
+enum ComplaintPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Report {
+  id              Int                @id @default(autoincrement())
+  caseId          String             @unique
+  organization    String
+  internshipTitle String?
+  issue           String
+  description     String
+  email           String
+  phone           String?
+  status          ComplaintStatus    @default(PENDING)
+  priority        ComplaintPriority  @default(MEDIUM)
+  date            DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+}
+
+model Organization {
+  id                  String   @id
+  name                String
+  location            String
+  registrationNumber  String
+  gstin               String
+  website             String
+  score               Int
+  status              String
+  risk                String
+  riskLevel           String
+  legalRegistration   Int
+  digitalFootprint    Int
+  offerContent        Int
+  contactVerifiability Int
+  complaintHistory    Int
+  complaints          Int
+  description         String
+  createdAt           DateTime @default(now())
+}
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+}
