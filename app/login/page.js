@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,24 +15,25 @@ export default function LoginPage() {
     async function checkAuth() {
       try {
         const response = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include",
           cache: "no-store",
         });
 
-        if (!response.ok) {
-          return;
-        }
+        // Not logged in is normal on the login page.
+        if (!response.ok) return;
 
         const data = await response.json();
 
-        if (data.authenticated) {
+        if (data.authenticated && data.user) {
           if (data.user.role === "ADMIN") {
-            window.location.href = "/admin";
-          } else {
-            window.location.href = "/dashboard";
+            window.location.replace("/admin");
+          } else if (data.user.role === "STUDENT") {
+            window.location.replace("/dashboard");
           }
         }
-      } catch (error) {
-        console.error("LOGIN AUTH CHECK ERROR:", error);
+      } catch (err) {
+        console.error("AUTH CHECK ERROR:", err);
       }
     }
 
@@ -40,10 +42,11 @@ export default function LoginPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     setError("");
 
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !password) {
       setError("Please enter email and password.");
       return;
     }
@@ -53,11 +56,12 @@ export default function LoginPage() {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
+          email: cleanEmail,
           password,
         }),
       });
@@ -65,21 +69,34 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        throw new Error(data.error || "Invalid email or password.");
+      }
+
+      if (!data.user || !data.user.role) {
+        throw new Error("Login response is missing user information.");
+      }
+
+      const actualRole = data.user.role.toUpperCase();
+      const selectedRole = role.toUpperCase();
+
+      if (actualRole !== selectedRole) {
         throw new Error(
-          data.error || "Login failed."
+          `This account is registered as ${actualRole}. Please select the correct role.`
         );
       }
 
-      console.log("Logged in user:", data.user);
+      console.log("Login successful:", data.user);
 
-      if (data.user.role === "ADMIN") {
-        window.location.href = "/admin";
+      if (actualRole === "ADMIN") {
+        window.location.replace("/admin");
+      } else if (actualRole === "STUDENT") {
+        window.location.replace("/dashboard");
       } else {
-        window.location.href = "/dashboard";
+        throw new Error("Unknown account role.");
       }
-    } catch (error) {
-      console.error("LOGIN ERROR:", error);
-      setError(error.message);
+    } catch (err) {
+      console.error("LOGIN ERROR:", err);
+      setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -87,25 +104,14 @@ export default function LoginPage() {
 
   return (
     <main className="auth-page">
-
       <div className="auth-card">
-
         <div className="auth-header">
-
-          <div className="auth-logo">
-            IV
-          </div>
-
+          <div className="auth-logo">IV</div>
           <h1>Welcome Back</h1>
-
-          <p>
-            Login to InternshipVerify
-          </p>
-
+          <p>Login to InternshipVerify</p>
         </div>
 
         <div className="role-selector">
-
           <button
             type="button"
             className={role === "student" ? "role-active" : ""}
@@ -121,48 +127,31 @@ export default function LoginPage() {
           >
             🛡️ Admin
           </button>
-
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="auth-form"
-        >
-
+        <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">
-
-            <label htmlFor="email">
-              Email Address
-            </label>
-
+            <label htmlFor="email">Email Address</label>
             <input
               id="email"
               type="email"
               placeholder="Enter your email"
               value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
+              onChange={(event) => setEmail(event.target.value)}
+              required
             />
-
           </div>
 
           <div className="form-group">
-
-            <label htmlFor="password">
-              Password
-            </label>
-
+            <label htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
               placeholder="Enter your password"
               value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
+              onChange={(event) => setPassword(event.target.value)}
+              required
             />
-
           </div>
 
           {error && (
@@ -172,11 +161,9 @@ export default function LoginPage() {
           )}
 
           <div className="forgot-password">
-
             <Link href="/forgot-password">
               Forgot Password?
             </Link>
-
           </div>
 
           <button
@@ -186,23 +173,15 @@ export default function LoginPage() {
           >
             {loading ? "Logging in..." : "Login"}
           </button>
-
         </form>
 
         <div className="auth-footer">
-
-          <p>
-            Don't have an account?
-          </p>
-
+          <p>Don't have an account?</p>
           <Link href="/register">
             Create an Account
           </Link>
-
         </div>
-
       </div>
-
     </main>
   );
 }

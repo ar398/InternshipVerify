@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -6,17 +7,12 @@ import { createSession } from "@/lib/auth";
 export async function POST(request) {
   try {
     const body = await request.json();
-
     const { email, password } = body;
 
     if (!email || !password) {
       return NextResponse.json(
-        {
-          error: "Email and password are required.",
-        },
-        {
-          status: 400,
-        }
+        { error: "Email and password are required." },
+        { status: 400 }
       );
     }
 
@@ -30,12 +26,8 @@ export async function POST(request) {
 
     if (!user) {
       return NextResponse.json(
-        {
-          error: "Invalid email or password.",
-        },
-        {
-          status: 401,
-        }
+        { error: "Invalid email or password." },
+        { status: 401 }
       );
     }
 
@@ -46,18 +38,19 @@ export async function POST(request) {
 
     if (!passwordMatch) {
       return NextResponse.json(
-        {
-          error: "Invalid email or password.",
-        },
-        {
-          status: 401,
-        }
+        { error: "Invalid email or password." },
+        { status: 401 }
       );
     }
 
     const token = await createSession(user);
 
+    if (!token) {
+      throw new Error("Session token could not be created.");
+    }
+
     const response = NextResponse.json({
+      success: true,
       message: "Login successful.",
       user: {
         id: user.id,
@@ -76,17 +69,13 @@ export async function POST(request) {
     });
 
     return response;
+
   } catch (error) {
     console.error("LOGIN ERROR:", error);
 
     return NextResponse.json(
-      {
-        error: "Failed to login.",
-        details: error.message,
-      },
-      {
-        status: 500,
-      }
+      { error: "Failed to login. Please try again." },
+      { status: 500 }
     );
   }
 }
